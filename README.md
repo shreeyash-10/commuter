@@ -1,6 +1,6 @@
 # Commute Monitor
 
-Google Apps Script commute alerts using Google Routes live traffic and Discord.
+Google Apps Script commute alerts using Google Routes live traffic for motorized two-wheelers and Discord.
 
 Checks every five minutes, Monday–Friday, 09:45–11:00 and 18:30–19:45 Asia/Kolkata. Morning is A → B; evening is B → A. Sends one alert per window per day after two consecutive qualifying readings, less than ten minutes apart. The threshold comparison is strictly below. API failures reset confirmation. Delivered alerts suppress further Maps requests for that window.
 
@@ -13,8 +13,8 @@ Checks every five minutes, Monday–Friday, 09:45–11:00 and 18:30–19:45 Asia
 | --- | --- |
 | LOCATION_A | Starting address or coordinates accepted as an address |
 | LOCATION_B | Destination address |
-| MORNING_THRESHOLD_MIN | Positive minutes; defaults to 35 |
-| EVENING_THRESHOLD_MIN | Positive minutes; defaults to 40 |
+| MORNING_THRESHOLD_MIN | Positive minutes; defaults to 24 |
+| EVENING_THRESHOLD_MIN | Positive minutes; defaults to 27 |
 | MAPS_API_KEY | API key restricted to Routes API |
 | DISCORD_WEBHOOK_URL | Discord channel webhook URL |
 
@@ -33,3 +33,9 @@ State is bounded to three Script Properties: `STATE_morning`, `STATE_evening`, a
 ## Local checks
 
 Run `node tests/monitor.cjs`. No packages or live credentials are required.
+
+## Travel mode and diagnostics
+
+Requests use TWO_WHEELER with TRAFFIC_AWARE_OPTIMAL. Google bills two-wheeler routing under Compute Routes Enterprise. Check the applicable billing-account allowance; the 1,500-request cap is not a billing guarantee. Two-wheeler routes are in beta and may not always choose optimal paths; use caution. Directions links explicitly select two-wheeler mode.
+
+Successful checks log the period, mode, exact ETA seconds, threshold and confirmation streak without keys or addresses. The latest ETA is also stored in the per-window state. A mode change resets confirmation and previous alert status for that window.

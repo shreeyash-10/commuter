@@ -1,5 +1,5 @@
 /** Commute Monitor. Configure secrets and locations in Script Properties. */
-const MONITOR = Object.freeze({timezone: 'Asia/Kolkata', monthlyCap: 1500, checks: 2});
+const MONITOR = Object.freeze({timezone: 'Asia/Kolkata', monthlyCap: 1500, checks: 2, travelMode: 'TWO_WHEELER'});
 
 function installTrigger() {
   config_(); // Refuse activation until all required properties are present.
@@ -25,7 +25,8 @@ function checkTraffic() {
     const day = Utilities.formatDate(now, MONITOR.timezone, 'yyyy-MM-dd');
     const key = 'STATE_' + window;
     let state = JSON.parse(props.getProperty(key) || '{}');
-    if (state.day !== day) state = {day: day, streak: 0, sent: false};
+    if (state.day !== day || state.mode !== MONITOR.travelMode)
+      state = {day: day, mode: MONITOR.travelMode, streak: 0, sent: false};
     if (state.sent) return;
     const cfg = config_();
     const route = route_(cfg, window);
@@ -39,6 +40,9 @@ function checkTraffic() {
     const fresh = state.last && now.getTime() - state.last <= 10 * 60 * 1000;
     state.streak = seconds < route.threshold * 60 ? (fresh ? state.streak : 0) + 1 : 0;
     state.last = now.getTime();
+    state.etaSeconds = seconds;
+    console.log(JSON.stringify({period:window, mode:MONITOR.travelMode, etaSeconds:seconds,
+      thresholdMinutes:route.threshold, streak:state.streak}));
     // Persist the reading even if Discord delivery fails; later checks can retry.
     props.setProperty(key, JSON.stringify(state));
     if (state.streak >= MONITOR.checks) {
@@ -73,8 +77,8 @@ function config_() {
   ['LOCATION_A', 'LOCATION_B', 'MAPS_API_KEY', 'DISCORD_WEBHOOK_URL'].forEach(k => {
     if (!p[k] || !p[k].trim()) throw new Error('Missing Script Property: ' + k);
   });
-  const morning = Number(p.MORNING_THRESHOLD_MIN || 35);
-  const evening = Number(p.EVENING_THRESHOLD_MIN || 40);
+  const morning = Number(p.MORNING_THRESHOLD_MIN || 24);
+  const evening = Number(p.EVENING_THRESHOLD_MIN || 27);
   if (![morning, evening].every(n => Number.isFinite(n) && n > 0))
     throw new Error('Thresholds must be positive numbers of minutes.');
   if (!/^https:\/\/(?:canary\.|ptb\.)?discord\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+$/.test(p.DISCORD_WEBHOOK_URL))
@@ -111,7 +115,7 @@ function duration_(from, to, key, now) {
     method:'post', contentType:'application/json', muteHttpExceptions:true,
     headers:{'X-Goog-Api-Key':key, 'X-Goog-FieldMask':'routes.duration'},
     payload:JSON.stringify({origin:{address:from}, destination:{address:to},
-      travelMode:'DRIVE', routingPreference:'TRAFFIC_AWARE_OPTIMAL'})
+      travelMode:MONITOR.travelMode, routingPreference:'TRAFFIC_AWARE_OPTIMAL'})
   });
   if (response.getResponseCode() !== 200) throw new Error('Routes API HTTP ' + response.getResponseCode());
   const data = JSON.parse(response.getContentText());
@@ -123,10 +127,11 @@ function duration_(from, to, key, now) {
 
 function message_(window, route, seconds) {
   const url = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(route.from)
-    + '&destination=' + encodeURIComponent(route.to) + '&travelmode=driving';
+    + '&destination=' + encodeURIComponent(route.to) + '&travelmode=two-wheeler';
   return '🚗 **' + window.toUpperCase() + ' COMMUTE ALERT**\n'
+    + '**Mode:** Two-wheeler\n'
     + '**Current ETA:** ' + Math.floor(seconds / 60) + 'm ' + Math.floor(seconds % 60) + 's\n'
-    + '**Threshold:** Under ' + route.threshold + ' min\n[Open directions](<' + url + '>)';
+    + '**Threshold:** Under ' + route.threshold + ' min\n[Open directions](<' + url + '>)\nTwo-wheeler routes are in beta; use caution.';
 }
 
 function discord_(webhook, content) {
