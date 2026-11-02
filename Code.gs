@@ -1,5 +1,5 @@
 /** Commute Monitor. Configure secrets and locations in Script Properties. */
-const MONITOR = Object.freeze({timezone: 'Asia/Kolkata', monthlyCap: 1500, checks: 2, travelMode: 'TWO_WHEELER'});
+const MONITOR = Object.freeze({timezone: 'Asia/Kolkata', monthlyCap: 1500, checks: 1, travelMode: 'TWO_WHEELER'});
 
 function installTrigger() {
   config_(); // Refuse activation until all required properties are present.
