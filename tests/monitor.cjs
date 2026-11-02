@@ -1,7 +1,7 @@
 const {readFileSync} = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const state = {LOCATION_A:'A',LOCATION_B:'B',MAPS_API_KEY:'test',DISCORD_WEBHOOK_URL:'https://discord.com/api/webhooks/123/token'};
+const state = {LOCATION_A:'A',LOCATION_B:'B',MORNING_THRESHOLD_MIN:'35',EVENING_THRESHOLD_MIN:'40',MAPS_API_KEY:'test',DISCORD_WEBHOOK_URL:'https://discord.com/api/webhooks/123/token'};
 let now = new Date('2026-11-02T04:15:00Z'), seconds = 1800, fail = false, maps = 0, alerts = 0;
 class Clock extends Date { constructor(...args) { super(...(args.length ? args : [now])); } }
 const props = {getProperties:()=>({...state}),getProperty:k=>state[k]??null,setProperty:(k,v)=>{state[k]=v;}};
@@ -12,7 +12,9 @@ const format = (date,tz,pattern) => {
 };
 const ctx = vm.createContext({Date:Clock,console,Utilities:{formatDate:format},
   PropertiesService:{getScriptProperties:()=>props},LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},
-  UrlFetchApp:{fetch:(url)=>{ if(url.includes('routes.googleapis.com')) { maps++; if(fail) throw Error('network');
+  UrlFetchApp:{fetch:(url,options)=>{ if(url.includes('routes.googleapis.com')) {
+    const request=JSON.parse(options.payload);assert.equal(request.travelMode,'TWO_WHEELER');
+    assert.equal(request.routingPreference,'TRAFFIC_AWARE_OPTIMAL'); maps++; if(fail) throw Error('network');
     return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({routes:[{duration:seconds+'s'}]})}; }
     alerts++; return {getResponseCode:()=>200}; }}});
 vm.runInContext(readFileSync(require('node:path').join(__dirname,'../Code.gs'),'utf8'),ctx);
@@ -41,4 +43,6 @@ now=new Date('2026-11-03T04:15:00Z');state.MAPS_USAGE=JSON.stringify({month:'202
 assert.throws(()=>run('checkTraffic()'),/cap/);assert.equal(maps,count);
 seconds=1800;now=new Date('2026-12-01T04:15:00Z');run('checkTraffic()');assert.equal(JSON.parse(state.MAPS_USAGE).count,1);
 now=new Date(now.getTime()+11*60000);run('checkTraffic()');assert.equal(JSON.parse(state.STATE_morning).streak,1);
+assert.equal(JSON.parse(state.STATE_morning).mode,'TWO_WHEELER');
+assert.match(run("message_('evening',{from:'B',to:'A',threshold:27},1440)"),/travelmode=two-wheeler/);
 console.log('Passed: windows, weekends, thresholds, confirmation, duplicate suppression, API failure, stale readings, cap and month reset.');
