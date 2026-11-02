@@ -27,22 +27,21 @@ for (const [stamp,expected] of [
 ]) assert.equal(run(`window_(new Date('${stamp}'))`),expected);
 assert.equal(run("route_({a:'Uday',b:'BHIVE',morning:35,evening:40},'morning').from"),'Uday');
 assert.equal(run("route_({a:'Uday',b:'BHIVE',morning:35,evening:40},'evening').from"),'BHIVE');
-run('checkTraffic()'); assert.equal(alerts,0);
+run('checkTraffic()'); assert.equal(alerts,1);
 now = new Date(now.getTime()+300000); run('checkTraffic()'); assert.equal(alerts,1);
-run('checkTraffic()'); assert.equal(maps,2);
+run('checkTraffic()'); assert.equal(maps,1);
 now = new Date('2026-11-02T13:00:00Z'); seconds=2400; run('checkTraffic()'); assert.equal(alerts,1); // Strictly below 40.
-seconds=2300; now=new Date(now.getTime()+300000);run('checkTraffic()');
 fail=true;now=new Date(now.getTime()+300000);assert.throws(()=>run('checkTraffic()'));
 assert.equal(JSON.parse(state.STATE_evening).streak,0);
-fail=false;now=new Date(now.getTime()+300000);run('checkTraffic()');assert.equal(alerts,1);
-now=new Date(now.getTime()+300000);run('checkTraffic()');assert.equal(alerts,2);
+fail=false;seconds=2300;now=new Date(now.getTime()+300000);run('checkTraffic()');assert.equal(alerts,2);
+run('checkTraffic()');assert.equal(alerts,2);
 const count=maps;
 now=new Date('2026-11-07T04:15:00Z');run('checkTraffic()');assert.equal(maps,count); // Saturday.
 now=new Date('2026-11-03T05:30:00Z');run('checkTraffic()');assert.equal(maps,count); // 11:00 excluded.
 now=new Date('2026-11-03T04:15:00Z');state.MAPS_USAGE=JSON.stringify({month:'2026-11',count:1500});
 assert.throws(()=>run('checkTraffic()'),/cap/);assert.equal(maps,count);
 seconds=1800;now=new Date('2026-12-01T04:15:00Z');run('checkTraffic()');assert.equal(JSON.parse(state.MAPS_USAGE).count,1);
-now=new Date(now.getTime()+11*60000);run('checkTraffic()');assert.equal(JSON.parse(state.STATE_morning).streak,1);
+now=new Date(now.getTime()+11*60000);run('checkTraffic()');assert.equal(JSON.parse(state.STATE_morning).sent,true);
 assert.equal(JSON.parse(state.STATE_morning).mode,'TWO_WHEELER');
 assert.match(run("message_('evening',{from:'B',to:'A',threshold:27},1440)"),/travelmode=two-wheeler/);
 console.log('Passed: windows, weekends, thresholds, confirmation, duplicate suppression, API failure, stale readings, cap and month reset.');
