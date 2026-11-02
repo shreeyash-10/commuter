@@ -6,7 +6,7 @@ function installTrigger() {
   const triggers = ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'checkTraffic');
   if (!triggers.length) ScriptApp.newTrigger('checkTraffic').timeBased().everyMinutes(5).create();
   triggers.slice(1).forEach(t => ScriptApp.deleteTrigger(t));
-  console.log('Commute monitoring enabled: every 5 minutes, weekdays 09–11 and 18–20 IST.');
+  console.log('Commute monitoring enabled: every 5 minutes, weekdays 09:45–11:00 and 18:30–19:45 IST.');
 }
 
 function uninstallTrigger() {
@@ -87,7 +87,10 @@ function window_(now) {
   const weekday = Utilities.formatDate(now, MONITOR.timezone, 'EEE');
   if (weekday === 'Sat' || weekday === 'Sun') return null;
   const hour = Number(Utilities.formatDate(now, MONITOR.timezone, 'H'));
-  return hour >= 9 && hour < 11 ? 'morning' : hour >= 18 && hour < 20 ? 'evening' : null;
+  const minute = Number(Utilities.formatDate(now, MONITOR.timezone, 'm'));
+  const minutes = hour * 60 + minute;
+  return minutes >= 585 && minutes < 660 ? 'morning'
+    : minutes >= 1110 && minutes < 1185 ? 'evening' : null;
 }
 
 function route_(cfg, window) {
